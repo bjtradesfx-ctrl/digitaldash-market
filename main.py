@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-APP_URL = "https://cove-extended-about-unable.trycloudflare.com/?v=7"
+APP_URL = "https://digitaldash-market-production.up.railway.app"
 
 # Channel Configuration for Automated Posting
 CHANNEL_USERNAME = "@digitaldashmarkets"  # Put your exact public channel handle here
@@ -419,7 +419,7 @@ async def channel_poster_loop():
 
         # 3 Hours interval (10800 seconds).
         # (Keep it at 30 seconds temporarily if you are still testing rotation!)
-        await asyncio.sleep(30)
+        await asyncio.sleep(10800)
 
 
 # --- TELEGRAM BOT LOGIC ---
