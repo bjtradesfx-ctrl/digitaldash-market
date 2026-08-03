@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Telegram Marketplace</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #0f172a;
+            --tg-theme-secondary-bg-color: #f8fafc;
+            --brand-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #0f172a; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .nav-item.active { color: #8b5cf6; }
+        .product-card:active { transform: scale(0.96); }
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        #notification-modal {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--brand-gradient); color: white; padding: 12px 24px;
+            border-radius: 99px; font-weight: 600; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .show-modal { opacity: 1 !important; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden text-slate-800">
+
+    <div id="notification-modal" class="text-sm">Notification</div>
+
+    <header class="glass-header sticky top-0 z-40 w-full px-6 py-4 border-b border-slate-200">
+        <div class="flex justify-between items-center">
+            <h1 class="text-lg font-extrabold text-transparent bg-clip-text truncate mr-2" style="background-image: var(--brand-gradient);">DigitalDashMarkets</h1>
+
+            <div class="flex items-center gap-2">
+                <button onclick="switchTab('fund')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-100 text-violet-700 font-bold text-xs hover:bg-violet-100 transition shadow-sm">
+                    <i class="ph-fill ph-star text-sm text-yellow-500"></i>
+                    <span id="header-balance">0 Stars</span>
+                </button>
+
+                <button onclick="switchTab('cart')" class="relative p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                    <i class="ph ph-shopping-bag text-xl"></i>
+                    <span id="header-cart-badge" class="absolute top-0 right-0 bg-violet-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content" class="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+        <section id="view-home" class="view-section active fade-in">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 px-1">Available Products</h2>
+            <div id="products-grid" class="grid grid-cols-2 gap-4"></div>
+        </section>
+
+        <!-- PRODUCT DETAIL VIEW -->
+        <section id="view-product-detail" class="view-section fade-in">
+            <button onclick="switchTab('home')" class="mb-4 text-sm font-semibold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full w-max">
+                <i class="ph ph-caret-left"></i> Back
+            </button>
+            <div class="bg-white rounded-3xl p-2 shadow-sm border border-slate-100 mb-6">
+                <img id="detail-image" src="" alt="Product" class="w-full h-64 object-cover rounded-2xl">
+                <div class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h2 id="detail-title" class="text-2xl font-bold text-slate-900 leading-tight">Title</h2>
+                        <div class="text-right">
+                            <span id="detail-price" class="text-xl font-extrabold text-violet-600 block">$0</span>
+                            <span id="detail-stars-price" class="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full inline-block mt-0.5">0 Stars</span>
+                        </div>
+                    </div>
+                    <span class="inline-block px-2 py-1 bg-slate-100 text-slate-500 text-xs font-semibold rounded-md mb-4 uppercase tracking-wider" id="detail-type">Type</span>
+                    <h3 class="font-bold text-slate-800 mb-2">Description</h3>
+                    <p id="detail-description" class="text-sm text-slate-600 leading-relaxed mb-4">Description here.</p>
+
+                    <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-6">
+                        <span class="font-semibold text-slate-700 text-sm">Quantity</span>
+                        <div class="flex items-center gap-3">
+                            <button onclick="adjustQuantity(-1)" class="w-9 h-9 rounded-xl bg-white text-slate-700 font-bold shadow-sm border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition">-</button>
+                            <span id="item-quantity" class="font-bold text-lg text-slate-900 w-6 text-center">1</span>
+                            <button onclick="adjustQuantity(1)" class="w-9 h-9 rounded-xl bg-white text-slate-700 font-bold shadow-sm border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition">+</button>
+                        </div>
+                    </div>
+
+                    <button id="add-to-cart-btn" class="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg" style="background: var(--brand-gradient);">Add to Cart</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CART VIEW -->
+        <section id="view-cart" class="view-section fade-in">
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-6 px-1">Your Cart</h2>
+            <div id="cart-empty" class="text-center py-12">
+                <i class="ph ph-shopping-cart text-6xl text-slate-300 mb-4 block"></i>
+                <p class="text-slate-500 font-medium">Your cart is empty.</p>
+                <button onclick="switchTab('home')" class="mt-4 px-6 py-2 bg-slate-100 text-slate-700 font-semibold rounded-full">Browse Products</button>
+            </div>
+            <div id="cart-content" class="hidden">
+                <div id="cart-items" class="flex flex-col gap-3 mb-6"></div>
+
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Delivery Email Address</label>
+                    <div class="relative flex items-center">
+                        <i class="ph ph-envelope absolute left-3.5 text-slate-400 text-lg"></i>
+                        <input type="email" id="checkout-email" placeholder="Enter your email for delivery" class="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-800 focus:outline-none focus:border-violet-500 transition">
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-2"><span class="text-slate-500">Subtotal</span><span id="cart-subtotal" class="font-semibold text-slate-800">$0.00</span></div>
+                    <div class="flex justify-between items-center border-t border-slate-100 pt-4 mb-4">
+                        <span class="text-lg font-bold text-slate-900">Total</span>
+                        <div class="text-right">
+                            <span id="cart-total" class="text-xl font-extrabold text-violet-600 block">$0.00</span>
+                            <span id="cart-total-stars" class="text-xs font-bold text-yellow-600">0 Stars</span>
+                        </div>
+                    </div>
+                    <button onclick="initiateCheckout()" class="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg" style="background: var(--brand-gradient);">Pay from In-App Balance</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- FUND ACCOUNT VIEW -->
+        <section id="view-fund" class="view-section fade-in">
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-2 px-1">Fund Account</h2>
+            <p class="text-slate-500 mb-6 px-1 text-sm">Add Stars to your wallet instantly using Apple Pay, Google Pay, or Credit Card.</p>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-6 text-center">
+                <p class="text-sm font-medium text-slate-500 mb-1">Current Wallet Balance</p>
+                <h3 id="wallet-balance-display" class="text-4xl font-extrabold text-slate-900">0 Stars</h3>
+                <p id="wallet-usd-value" class="text-xs text-slate-400 mt-1">≈ $0.00 USD</p>
+            </div>
+
+            <!-- CUSTOM FUNDING INPUT -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-4">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Amount to Fund ($ USD equivalent)</label>
+                <div class="relative flex items-center mb-2">
+                    <span class="absolute left-3.5 text-slate-400 font-bold">$</span>
+                    <input type="number" id="fund-amount" placeholder="e.g. 20" min="1" oninput="updateStarEstimation()" class="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-8 pr-4 text-sm text-slate-800 focus:outline-none focus:border-violet-500 transition">
+                </div>
+                <p id="star-estimation-text" class="text-xs text-violet-600 font-semibold mb-4 px-1">You will receive: 0 Stars</p>
+
+                <button class="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2" style="background: var(--brand-gradient);" onclick="processStarsFunding()">
+                    <span class="text-yellow-300 text-2xl">⭐</span> Pay with Telegram Stars
+                </button>
+            </div>
+        </section>
+
+        <!-- PROFILE VIEW -->
+        <section id="view-profile" class="view-section fade-in">
+            <div class="flex flex-col items-center justify-center py-6 border-b border-slate-100">
+                <div id="profile-avatar" class="w-20 h-20 rounded-full bg-gradient-to-tr from-violet-400 to-fuchsia-500 flex items-center justify-center text-white text-3xl font-bold mb-3 shadow-sm">U</div>
+                <h2 id="profile-name" class="text-xl font-extrabold text-slate-900">User</h2>
+                <p id="profile-id" class="text-slate-500 text-xs mt-1 font-mono bg-slate-100 px-2 py-1 rounded-md">ID: Unknown</p>
+            </div>
+
+            <div class="px-4 py-6">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-receipt text-violet-500"></i> Order History
+                </h3>
+                <div id="order-history-container" class="flex flex-col gap-4 pb-12">
+                    <p class="text-slate-500 text-sm text-center py-8">Loading your history...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 flex justify-around items-center pt-3 pb-safe z-40 px-2">
+        <button onclick="switchTab('home')" id="tab-home" class="nav-item active flex flex-col items-center gap-1 text-slate-400 w-16"><i class="ph-fill ph-house text-2xl"></i><span class="text-[10px] font-semibold">Home</span></button>
+        <button onclick="switchTab('fund')" id="tab-fund" class="nav-item flex flex-col items-center gap-1 text-slate-400 w-16"><i class="ph-fill ph-wallet text-2xl"></i><span class="text-[10px] font-semibold">Fund</span></button>
+        <button onclick="switchTab('cart')" id="tab-cart" class="nav-item flex flex-col items-center gap-1 text-slate-400 w-16 relative"><i class="ph-fill ph-shopping-cart text-2xl"></i><span class="text-[10px] font-semibold">Cart</span><span id="nav-cart-badge" class="absolute top-0 right-2 bg-red-500 text-white text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center hidden">0</span></button>
+        <button onclick="switchTab('profile')" id="tab-profile" class="nav-item flex flex-col items-center gap-1 text-slate-400 w-16"><i class="ph-fill ph-user text-2xl"></i><span class="text-[10px] font-semibold">Profile</span></button>
+    </nav>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        tg.setHeaderColor('#ffffff');
+
+        let userId = 0;
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            userId = user.id;
+            document.getElementById('profile-name').innerText = user.first_name;
+            document.getElementById('profile-id').innerText = `ID: ${user.id}`;
+            document.getElementById('profile-avatar').innerText = user.first_name.charAt(0).toUpperCase();
+        }
+
+        let currentProduct = null;
+        let selectedQuantity = 1;
+        let cart = [];
+        let userWalletBalanceStars = 0; // Balance tracked in Stars
+
+        let products = window.INITIAL_PRODUCTS || [];
+
+        function dollarsToStars(usd) {
+            return Math.ceil(usd / 0.02);
+        }
+
+        async function fetchBalance() {
+            if (userId === 0) return;
+            try {
+                const res = await fetch(`/api/balance/${userId}`);
+                const data = await res.json();
+                if (data.status === "success") {
+                    userWalletBalanceStars = data.balance; // Balance stored as stars
+                    updateWalletUI();
+                }
+            } catch (err) {
+                console.error("Failed to fetch balance", err);
+            }
+        }
+
+        function updateWalletUI() {
+            const usdApprox = (userWalletBalanceStars * 0.02).toFixed(2);
+            document.getElementById('header-balance').innerText = `${userWalletBalanceStars} Stars`;
+            document.getElementById('wallet-balance-display').innerText = `${userWalletBalanceStars} Stars`;
+            document.getElementById('wallet-usd-value').innerText = `≈ $${usdApprox} USD`;
+        }
+
+        function updateStarEstimation() {
+            const val = parseFloat(document.getElementById('fund-amount').value) || 0;
+            const stars = dollarsToStars(val);
+            document.getElementById('star-estimation-text').innerText = `You will receive: ${stars} Stars`;
+        }
+
+        function notify(msg) {
+            const m = document.getElementById('notification-modal');
+            m.innerText = msg; m.classList.add('show-modal');
+            setTimeout(() => m.classList.remove('show-modal'), 3000);
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (id === 'product-detail') {
+                document.getElementById('view-product-detail').classList.add('active');
+                document.getElementById('tab-home').classList.add('active');
+            } else {
+                document.getElementById(`view-${id}`).classList.add('active');
+                document.getElementById(`tab-${id}`).classList.add('active');
+            }
+            if (id === 'fund') {
+                fetchBalance();
+            } else if (id === 'profile') {
+                fetchOrderHistory();
+            }
+            document.getElementById('main-content').scrollTo(0, 0);
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function renderCatalog() {
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = '';
+            products.forEach(p => {
+                const starsPrice = dollarsToStars(p.price);
+                const card = document.createElement('div');
+                card.className = 'product-card bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex flex-col cursor-pointer';
+                card.onclick = () => openProduct(p);
+                card.innerHTML = `
+                    <img src="${p.image}" class="w-full h-32 object-cover rounded-xl mb-3" onerror="this.src='https://placehold.co/600x600/e2e8f0/475569?text=No+Image'">
+                    <div class="px-1 pb-1 flex flex-col flex-1 justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm leading-tight mb-1">${p.name}</h3>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-sm">${p.type}</span>
+                        </div>
+                        <div class="mt-2">
+                            <p class="font-extrabold text-violet-600 text-sm">$${p.price.toFixed(2)}</p>
+                            <p class="font-bold text-yellow-600 text-[11px]">⭐ ${starsPrice} Stars</p>
+                        </div>
+                    </div>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function openProduct(p) {
+            currentProduct = p;
+            selectedQuantity = 1;
+            const starsPrice = dollarsToStars(p.price);
+            document.getElementById('item-quantity').innerText = selectedQuantity;
+            document.getElementById('detail-image').src = p.image;
+            document.getElementById('detail-title').innerText = p.name;
+            document.getElementById('detail-price').innerText = `$${p.price.toFixed(2)}`;
+            document.getElementById('detail-stars-price').innerText = `⭐ ${starsPrice} Stars`;
+            document.getElementById('detail-type').innerText = p.type;
+            document.getElementById('detail-description').innerText = p.description;
+            document.getElementById('add-to-cart-btn').onclick = () => { addToCart(p, selectedQuantity); switchTab('cart'); };
+            switchTab('product-detail');
+        }
+
+        function adjustQuantity(amount) {
+            selectedQuantity += amount;
+            if (selectedQuantity < 1) selectedQuantity = 1;
+            document.getElementById('item-quantity').innerText = selectedQuantity;
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function addToCart(p, qty) {
+            const existing = cart.find(i => i.id === p.id);
+            if (existing) {
+                existing.quantity += qty;
+            } else {
+                cart.push({ ...p, quantity: qty });
+            }
+            updateCartUI();
+            notify(`${qty}x ${p.name} added to cart`);
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(i => i.id !== id);
+            updateCartUI();
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        function updateCartUI() {
+            const count = cart.reduce((a, b) => a + b.quantity, 0);
+            const totalUSD = cart.reduce((a, b) => a + (b.price * b.quantity), 0);
+            const totalStars = dollarsToStars(totalUSD);
+
+            const navBadge = document.getElementById('nav-cart-badge');
+            const headerBadge = document.getElementById('header-cart-badge');
+
+            if (count > 0) {
+                navBadge.innerText = count; headerBadge.innerText = count;
+                navBadge.classList.remove('hidden'); headerBadge.classList.remove('hidden');
+                document.getElementById('cart-empty').classList.add('hidden');
+                document.getElementById('cart-content').classList.remove('hidden');
+            } else {
+                navBadge.classList.add('hidden'); headerBadge.classList.add('hidden');
+                document.getElementById('cart-empty').classList.remove('hidden');
+                document.getElementById('cart-content').classList.add('hidden');
+            }
+
+            const container = document.getElementById('cart-items');
+            container.innerHTML = '';
+            cart.forEach(item => {
+                const itemStars = dollarsToStars(item.price * item.quantity);
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm border border-slate-100';
+                row.innerHTML = `
+                    <img src="${item.image}" class="w-16 h-16 rounded-xl object-cover">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-slate-800 leading-tight">${item.name}</h4>
+                        <p class="font-semibold text-violet-600 text-xs mt-1">$${(item.price * item.quantity).toFixed(2)} <span class="text-yellow-600 font-bold ml-1">(⭐ ${itemStars})</span> <span class="text-slate-400 font-normal">(x${item.quantity})</span></p>
+                    </div>
+                    <button onclick="removeFromCart(${item.id})" class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center"><i class="ph ph-trash"></i></button>`;
+                container.appendChild(row);
+            });
+            document.getElementById('cart-subtotal').innerText = `$${totalUSD.toFixed(2)}`;
+            document.getElementById('cart-total').innerText = `$${totalUSD.toFixed(2)}`;
+            document.getElementById('cart-total-stars').innerText = `⭐ ${totalStars} Stars`;
+        }
+
+        async function initiateCheckout() {
+            if (cart.length === 0) return;
+
+            const emailInput = document.getElementById('checkout-email').value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(emailInput)) {
+                tg.showPopup({ title: "Email Required", message: "Please enter a valid email address so we can deliver your digital product details." });
+                return;
+            }
+
+            const totalUSD = cart.reduce((a, b) => a + (b.price * b.quantity), 0);
+            const totalStars = dollarsToStars(totalUSD);
+
+            if (userWalletBalanceStars < totalStars) {
+                tg.showPopup({ title: "Insufficient Balance", message: `You need ${totalStars} Stars, but your balance is ${userWalletBalanceStars} Stars. Please fund your account to complete this purchase.` });
+                switchTab('fund');
+                return;
+            }
+
+            const orderPayload = {
+                telegram_user_id: userId,
+                username: tg.initDataUnsafe?.user?.username || "Unknown",
+                email: emailInput,
+                items: cart,
+                total_cost: totalUSD
+            };
+
+            try {
+                const response = await fetch('/api/submit-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderPayload)
+                });
+
+                if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+
+                const data = await response.json();
+
+                userWalletBalanceStars = data.new_balance; // returns updated stars balance
+                updateWalletUI();
+
+                cart = [];
+                document.getElementById('checkout-email').value = '';
+                updateCartUI();
+                switchTab('home');
+
+                tg.showPopup({ title: "Purchase Successful", message: `Your order has been paid! Product details dispatched to ${emailInput}.` });
+
+            } catch (error) {
+                console.error("Error submitting order to backend:", error);
+                tg.showPopup({ title: "Order Failed", message: error.message });
+            }
+        }
+
+        async function processStarsFunding() {
+            const amountInput = document.getElementById('fund-amount').value;
+            const usdAmount = parseFloat(amountInput);
+
+            if (isNaN(usdAmount) || usdAmount <= 0) {
+                 tg.showPopup({ title: "Invalid Amount", message: "Please enter a valid USD funding amount." });
+                 return;
+            }
+
+            if (userId === 0) {
+                tg.showPopup({ title: "Error", message: "Telegram User Data not found." });
+                return;
+            }
+
+            tg.MainButton.text = "GENERATING INVOICE...";
+            tg.MainButton.show();
+            tg.MainButton.showProgress();
+
+            try {
+                const response = await fetch('/api/fund/stars', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegram_user_id: userId, amount: usdAmount })
+                });
+
+                if (!response.ok) throw new Error("Server failed to create invoice.");
+
+                const data = await response.json();
+
+                if (data.status === "success" && data.url) {
+                    tg.openInvoice(data.url, function(status) {
+                        if (status == 'paid') {
+                            fetchBalance();
+                            notify("Wallet funded successfully!");
+                        }
+                    });
+                } else {
+                    throw new Error("Invalid URL returned");
+                }
+
+            } catch (error) {
+                console.error("Funding error:", error);
+                tg.showPopup({ title: "Invoice Error", message: "Could not connect to the payment gateway." });
+            } finally {
+                tg.MainButton.hideProgress();
+                tg.MainButton.hide();
+            }
+        }
+
+        async function fetchOrderHistory() {
+            if (userId === 0) return;
+
+            const container = document.getElementById('order-history-container');
+            container.innerHTML = '<div class="text-center py-8"><div class="animate-pulse flex flex-col items-center"><div class="w-8 h-8 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin mb-3"></div><p class="text-slate-500 text-sm font-medium">Loading history...</p></div></div>';
+
+            try {
+                const res = await fetch(`/api/orders/${userId}`);
+                const data = await res.json();
+
+                if (data.status === "success") {
+                    if (data.orders.length === 0) {
+                        container.innerHTML = `
+                            <div class="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100">
+                                <i class="ph ph-bag text-4xl text-slate-300 mb-2 block"></i>
+                                <p class="text-slate-500 text-sm font-medium">No past orders found.</p>
+                            </div>`;
+                        return;
+                    }
+
+                    container.innerHTML = '';
+
+                    data.orders.forEach(order => {
+                        const dateObj = new Date(order.timestamp);
+                        const dateString = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                        const orderStars = dollarsToStars(order.total_cost);
+
+                        let itemsHtml = '';
+                        order.items.forEach(item => {
+                            const itemStars = dollarsToStars(item.price * item.quantity);
+                            itemsHtml += `
+                                <div class="flex justify-between items-center text-sm py-2 border-b border-slate-100 last:border-0">
+                                    <span class="text-slate-700 font-medium">${item.quantity}x ${item.name}</span>
+                                    <span class="font-semibold text-slate-900">$${(item.price * item.quantity).toFixed(2)} <span class="text-yellow-600 text-xs">(⭐ ${itemStars})</span></span>
+                                </div>`;
+                        });
+
+                        const orderCard = document.createElement('div');
+                        orderCard.className = 'bg-white p-4 rounded-2xl border border-slate-100 shadow-sm';
+                        orderCard.innerHTML = `
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-[10px] font-extrabold text-violet-600 bg-violet-50 px-2 py-1 rounded-md uppercase tracking-wider">Order #${order.order_id}</span>
+                                <span class="text-xs font-semibold text-slate-400">${dateString}</span>
+                            </div>
+                            <div class="bg-slate-50 rounded-xl px-3 py-1 mb-3 border border-slate-100">
+                                ${itemsHtml}
+                            </div>
+                            <div class="flex justify-between items-center pt-1">
+                                <span class="text-sm font-bold text-slate-500">Total Paid</span>
+                                <span class="text-base font-extrabold text-slate-900">$${order.total_cost.toFixed(2)} <span class="text-yellow-600 text-xs">(⭐ ${orderStars})</span></span>
+                            </div>
+                        `;
+                        container.appendChild(orderCard);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to fetch orders", err);
+                container.innerHTML = '<p class="text-red-500 text-sm text-center py-4 font-bold">Failed to load history. Check connection.</p>';
+            }
+        }
+
+        // --- Initialize App ---
+        renderCatalog();
+        fetchBalance();
+        updateCartUI();
+    </script>
+</body>
+</html>
